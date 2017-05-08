@@ -221,13 +221,13 @@ function runWebGLApp() {
     motor.agregaLuz(luz3);
 
     motor.setLuzActiva(0);
-    var malla2=motor.crearMalla("objtex2.obj");
+    var malla2=motor.crearMalla("mac.obj");
     var malla=motor.crearMalla("chess.obj");
     // console.log("Ya la he creado");
     motor.agregaNodo(nodo1,nodo3);
     motor.agregaNodo(nodo2,nodo4);
 
-    malla2.getEntidad().getMalla().setTextura(tex1);
+    //malla2.getEntidad().getMalla().setTextura(tex1);
 
     motor.agregaNodo(nodo3,camara);
     motor.agregaNodo(nodo4,malla2);
@@ -241,7 +241,6 @@ function runWebGLApp() {
 
 <body onLoad='runWebGLApp()'>
 <div id='top'>
-<h1>Adivina que producto es</h1>
 </div>
 
 <div id='contents'>
