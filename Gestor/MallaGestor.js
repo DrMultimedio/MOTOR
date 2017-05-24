@@ -11,6 +11,7 @@ function MallaGestor(){
 	this.alias=null;
 	this.remote=null;
 	this.textura = null;
+	this.texCoordinates = null;
 }
 MallaGestor.prototype.getNombre = function(){
 	return this.nombreFich;
@@ -26,12 +27,12 @@ MallaGestor.prototype.cargarFichero = function(fich) {
 		var alias= "alias";
  		peticion.open('GET', fich, false);
 		var formato = fich.split('.').pop();
-		console.log("El formato es " + formato);
 		var malla = this;
 
 		if(formato = "obj"){
 		peticion.onload = function() {
 					object = new OBJ.Mesh(peticion.responseText);
+					console.log(object);
 					malla.alias = (alias==null)?'none':alias;
 	                malla.remote = true;
 					malla.vertices=object.vertices;
@@ -39,6 +40,7 @@ MallaGestor.prototype.cargarFichero = function(fich) {
 					malla.colors=object.colors;
 					malla.diffuse = object.diffuse;
 					malla.wireframe = object.wireframe;
+					malla.texCoordinates = object.textures;
 					malla.perVertexColor = object.perVertexColor;
 					if (object.perVertexColor   === undefined)    {   malla.perVertexColor   = false;            }
 					if (object.wireframe        === undefined)    {   malla.wireframe        = false;            }
@@ -69,14 +71,14 @@ MallaGestor.prototype.cargarFichero = function(fich) {
 					var indexBufferObject = gl.createBuffer();
 					gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBufferObject);
 					gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(object.indices), gl.STATIC_DRAW);
-					console.log(object);
+					//console.log(object);
 					malla.vbo = vertexBufferObject;
 					malla.ibo = indexBufferObject;
 					malla.nbo = normalBufferObject;
 					gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
 					gl.bindBuffer(gl.ARRAY_BUFFER,null);
 
-					console.log(malla);
+					//console.log(malla);
 					if (malla.remote){
 						console.info(malla.alias + ' has been added to the scene [Remote]');
 					}
@@ -121,7 +123,7 @@ MallaGestor.prototype.cargarFichero = function(fich) {
 					gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBufferObject);
 					gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(object.indices), gl.STATIC_DRAW);
 
-					console.log(object);
+					//console.log(object);
 					malla.vbo = vertexBufferObject;
 					malla.ibo = indexBufferObject;
 					malla.nbo = normalBufferObject;
@@ -130,7 +132,7 @@ MallaGestor.prototype.cargarFichero = function(fich) {
 					gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
 
 
-					console.log(malla);
+					//console.log(malla);
 					if (malla.remote){
 						console.info(malla.alias + ' has been added to the scene [Remote]');
 					}
@@ -141,11 +143,13 @@ MallaGestor.prototype.cargarFichero = function(fich) {
 		}
 		peticion.send();
 }
-
+MallaGestor.prototype.getCoordinates = function() {
+	return this.texCoordinates;
+};
 
 MallaGestor.prototype.draw = function() {
 	var object = this;
-	console.log(object);
+	//console.log(object);
 	gl.viewport(0, 0, c_width, c_height);
 
         updateTransforms();   
@@ -156,8 +160,6 @@ MallaGestor.prototype.draw = function() {
 			//fin luces
 
         
-	        gl.uniform1i(prg.uUpdateLight,updateLightPosition);  
-			gl.uniform1i(prg.uUpdateLight2,updateLightPosition2);            
             
             //Setting uniforms
             gl.uniform4fv(prg.uMaterialDiffuse, object.diffuse);
@@ -167,25 +169,26 @@ MallaGestor.prototype.draw = function() {
             //Setting attributes
             gl.enableVertexAttribArray(prg.aVertexPosition);
             gl.disableVertexAttribArray(prg.aVertexNormal);
-            gl.disableVertexAttribArray(prg.aVertexColor);
             
             gl.bindBuffer(gl.ARRAY_BUFFER, object.vbo);
             gl.vertexAttribPointer(prg.aVertexPosition, 3, gl.FLOAT, false, 0, 0);
             gl.enableVertexAttribArray(prg.aVertexPosition);
-			console.log ("dibujo la textura");
-			console.log(this.textura);
-			if(this.textura != null){
-/*				this.textura.draw();
-*/				gl.enableVertexAttribArray(Program.aVertexTextureCoords);
-				gl.bindBuffer(gl.ARRAY_BUFFER, object.tbo);
-				console.log(Program.aVertexTextureCoords);
-				//gl.vertexAttribPointer(Program.aVertexTextureCoords, 2, gl.FLOAT, false, 0, 0);
-	
-				gl.activeTexture(gl.TEXTURE0);
-				console.log(this.textura.textura);
-				gl.bindTexture(gl.TEXTURE_2D, this.textura.textura);
-				gl.uniform1i(Program.uSampler, 0);
 
+			gl.enableVertexAttribArray(prg.aTextureCoord);
+			gl.vertexAttribPointer(prg.aTextureCoord, 2, gl.FLOAT, false, 0, 0);
+
+/*			console.log ("dibujo la textura");
+			console.log(this.textura);
+*/			
+			
+			if(this.textura!=null && this.textura.length != 0){
+				cubeVerticesTextureCoordBuffer = gl.createBuffer();
+				gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesTextureCoordBuffer);
+				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.texCoordinates),gl.STATIC_DRAW);
+
+				gl.activeTexture(gl.TEXTURE0);
+				gl.bindTexture(gl.TEXTURE_2D, this.textura.textura);
+				gl.uniform1i(gl.getUniformLocation(prg, 'uSampler'), 0);
 			}
 
 
@@ -202,7 +205,9 @@ MallaGestor.prototype.draw = function() {
             }
             
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, object.ibo);
-            
+            gl.enable(gl.CULL_FACE);
+            gl.cullFace(gl.BACK);
+
             if (object.wireframe){
                 gl.drawElements(gl.LINES, object.indices.length, gl.UNSIGNED_SHORT,0);
             }
@@ -219,3 +224,4 @@ MallaGestor.prototype.endDraw = function() {
 }
 
 
+04
